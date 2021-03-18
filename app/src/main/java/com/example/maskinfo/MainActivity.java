@@ -2,6 +2,8 @@ package com.example.maskinfo;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -19,6 +21,7 @@ import android.widget.TextView;
 import com.example.maskinfo.model.Store;
 import com.example.maskinfo.model.StoreInfo;
 import com.example.maskinfo.repository.MaskService;
+import com.example.maskinfo.viewmodel.MainViewModel;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -34,56 +37,86 @@ import retrofit2.converter.moshi.MoshiConverterFactory;
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = MainActivity.class.getSimpleName();
+    private MainViewModel viewModel;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        // 리사이클러뷰 세팅 코드
+        // retrofit 통신 코드 --> view model 로 분리 가능
+        // 리사이클러뷰 어댑터 코드
 
-        RecyclerView recyclerView = findViewById(R.id.recycler_view);
+       RecyclerView recyclerView = findViewById(R.id.recycler_view);
         recyclerView.setLayoutManager(new LinearLayoutManager(this, RecyclerView.VERTICAL, false));
 
         final StoreAdapter adapter = new StoreAdapter();
         recyclerView.setAdapter(adapter);
 
-        Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(MaskService.BASE_URL)
-                .addConverterFactory(MoshiConverterFactory.create())
-                .build();
+        // view model 객체 생성
+        // 통신 기능을 view model 로 분리함
+       viewModel = new ViewModelProvider(this).get(MainViewModel.class);
+//       viewModel.itemLiveData.observe(this, new Observer<List<Store>>() {
+//
+//           @Override
+//           public void onChanged(List<Store> stores) {
+//
+//           }
+//       });
 
-        MaskService service = retrofit.create(MaskService.class);
+        // 람다식으로 변경
+        // livedata 가 데이터의 변화를 감지해서 UI 를 갱신
+        viewModel.itemLiveData.observe(this, stores -> {
+            adapter.updateItems(stores);
+            getSupportActionBar().setTitle("마스크 재고 있는 곳: "+stores.size()+ "곳 ");
 
-        Call<StoreInfo> storeInfoCall = service.fetchStoreInfo();
+        });
+
+        // view model 에게 데이터 요청
+        // 화면 돌릴 때마다 로그에 찍히는 것 확인 = live data 를 제대로 활용 못하고 있다.
+//        viewModel.fetchStoreInfo();
+
+
+        // retrofit 세팅 및 통신 준비
+//        Retrofit retrofit = new Retrofit.Builder()
+//                .baseUrl(MaskService.BASE_URL)
+//                .addConverterFactory(MoshiConverterFactory.create())
+//                .build();
+//
+//        MaskService service = retrofit.create(MaskService.class);
+
+//        Call<StoreInfo> storeInfoCall = service.fetchStoreInfo();
         // 안드로이드 에서는 네트워크 관련 메소드를 실행할 때 비동기식으로 처리해야만 작동한다.
         // .execute()는 동기식을 지원하는 메소드이기 때문에 바꿔야한다.
 //        StoreInfo storeInfo = storeInfoCall.execute().body();
 
         // .execute() 대신에 enqueue()를 사용해야 한다.
-        storeInfoCall.enqueue(new Callback<StoreInfo>() {
-            @Override
-            public void onResponse(Call<StoreInfo> call, Response<StoreInfo> response) {
-                Log.d(TAG, "onResponse: refresh");
-                List<Store> items = response.body().getStores();
-
-                // 외부에서 선언된 변수를 사용할 경우 에러가 난다.
-                // 이유는 변경이 가능한 객체이기 때문에
-
-                // 받아온 데이터 중 null 값이 있는 경우
-                // stream API 사용하여 null 값인 데이터들만 골라내고
-                // list 에 적용할 수 있다.
-                adapter.updateItems(items
-                        .stream()
-                        .filter(item -> item.getRemainStat() != null)
-                        .collect(Collectors.toList()));
-                getSupportActionBar().setTitle("마스크 재고 있는 곳: "+items.size()+ "곳 ");
-            }
-
-            @Override
-            public void onFailure(Call<StoreInfo> call, Throwable t) {
-                Log.e(TAG, "onFailure: ", t );
-            }
-        });
+        // 기존에 사용하던 방식 -> 통신 call back 메소드
+//        storeInfoCall.enqueue(new Callback<StoreInfo>() {
+//            @Override
+//            public void onResponse(Call<StoreInfo> call, Response<StoreInfo> response) {
+//                Log.d(TAG, "onResponse: refresh");
+//                List<Store> items = response.body().getStores();
+//
+//                // 외부에서 선언된 변수를 사용할 경우 에러가 난다.
+//                // 이유는 변경이 가능한 객체이기 때문에
+//
+//                // 받아온 데이터 중 null 값이 있는 경우
+//                // stream API 사용하여 null 값인 데이터들만 골라내고
+//                // list 에 적용할 수 있다.
+//                adapter.updateItems(items
+//                        .stream()
+//                        .filter(item -> item.getRemainStat() != null)
+//                        .collect(Collectors.toList()));
+//                getSupportActionBar().setTitle("마스크 재고 있는 곳: "+items.size()+ "곳 ");
+//            }
+//
+//            @Override
+//            public void onFailure(Call<StoreInfo> call, Throwable t) {
+//                Log.e(TAG, "onFailure: ", t );
+//            }
+//        });
     }
 
     @Override
@@ -98,7 +131,8 @@ public class MainActivity extends AppCompatActivity {
         // Handle item selection
         switch (item.getItemId()) {
             case R.id.action_refresh:
-
+                // 데이터 새로고침
+                viewModel.fetchStoreInfo();
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
