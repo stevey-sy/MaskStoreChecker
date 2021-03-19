@@ -51,7 +51,6 @@ public class MainViewModel extends ViewModel {
                         .collect(Collectors.toList());
 
                 itemLiveData.postValue(items);
-
             }
 
             @Override
@@ -61,8 +60,5 @@ public class MainViewModel extends ViewModel {
                 itemLiveData.postValue(Collections.emptyList());
             }
         });
-
     }
-
-
 }

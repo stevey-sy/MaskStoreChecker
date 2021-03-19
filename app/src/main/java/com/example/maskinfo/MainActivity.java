@@ -7,7 +7,10 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import android.Manifest;
+import android.annotation.SuppressLint;
 import android.graphics.Color;
+import android.location.Location;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -17,11 +20,17 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.example.maskinfo.model.Store;
 import com.example.maskinfo.model.StoreInfo;
 import com.example.maskinfo.repository.MaskService;
 import com.example.maskinfo.viewmodel.MainViewModel;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.gun0912.tedpermission.PermissionListener;
+import com.gun0912.tedpermission.TedPermission;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -38,25 +47,51 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = MainActivity.class.getSimpleName();
     private MainViewModel viewModel;
+    // 위치 데이터 객체
+    private FusedLocationProviderClient fusedLocationClient;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+
+        PermissionListener permissionlistener = new PermissionListener() {
+            @Override
+            public void onPermissionGranted() {
+                Toast.makeText(MainActivity.this, "Permission Granted", Toast.LENGTH_SHORT).show();
+                performAction();
+            }
+
+            @Override
+            public void onPermissionDenied(List<String> deniedPermissions) {
+                Toast.makeText(MainActivity.this, "Permission Denied\n" + deniedPermissions.toString(), Toast.LENGTH_SHORT).show();
+            }
+        };
+
+        TedPermission.with(this)
+                .setPermissionListener(permissionlistener)
+                .setDeniedMessage("If you reject permission,you can not use this service\n\nPlease turn on permissions at [Setting] > [Permission]")
+                .setPermissions(Manifest.permission.ACCESS_FINE_LOCATION)
+                .check();
+
+
+
+
         // 리사이클러뷰 세팅 코드
         // retrofit 통신 코드 --> view model 로 분리 가능
         // 리사이클러뷰 어댑터 코드
 
-       RecyclerView recyclerView = findViewById(R.id.recycler_view);
-        recyclerView.setLayoutManager(new LinearLayoutManager(this, RecyclerView.VERTICAL, false));
-
-        final StoreAdapter adapter = new StoreAdapter();
-        recyclerView.setAdapter(adapter);
+//       RecyclerView recyclerView = findViewById(R.id.recycler_view);
+//        recyclerView.setLayoutManager(new LinearLayoutManager(this, RecyclerView.VERTICAL, false));
+//
+//        final StoreAdapter adapter = new StoreAdapter();
+//        recyclerView.setAdapter(adapter);
 
         // view model 객체 생성
         // 통신 기능을 view model 로 분리함
-       viewModel = new ViewModelProvider(this).get(MainViewModel.class);
+//       viewModel = new ViewModelProvider(this).get(MainViewModel.class);
 //       viewModel.itemLiveData.observe(this, new Observer<List<Store>>() {
 //
 //           @Override
@@ -67,11 +102,11 @@ public class MainActivity extends AppCompatActivity {
 
         // 람다식으로 변경
         // livedata 가 데이터의 변화를 감지해서 UI 를 갱신
-        viewModel.itemLiveData.observe(this, stores -> {
-            adapter.updateItems(stores);
-            getSupportActionBar().setTitle("마스크 재고 있는 곳: "+stores.size()+ "곳 ");
-
-        });
+//        viewModel.itemLiveData.observe(this, stores -> {
+//            adapter.updateItems(stores);
+//            getSupportActionBar().setTitle("마스크 재고 있는 곳: "+stores.size()+ "곳 ");
+//
+//        });
 
         // view model 에게 데이터 요청
         // 화면 돌릴 때마다 로그에 찍히는 것 확인 = live data 를 제대로 활용 못하고 있다.
@@ -117,6 +152,30 @@ public class MainActivity extends AppCompatActivity {
 //                Log.e(TAG, "onFailure: ", t );
 //            }
 //        });
+    }
+
+    @SuppressLint("MissingPermission")
+    private void performAction() {
+        fusedLocationClient.getLastLocation()
+                .addOnSuccessListener(this, location -> {
+                    // Got last known location. In some rare situations this can be null.
+                    if (location != null) {
+                        // Logic to handle location object
+                    }
+                });
+
+        RecyclerView recyclerView = findViewById(R.id.recycler_view);
+        recyclerView.setLayoutManager(new LinearLayoutManager(this, RecyclerView.VERTICAL, false));
+
+        final StoreAdapter adapter = new StoreAdapter();
+        recyclerView.setAdapter(adapter);
+
+        viewModel = new ViewModelProvider(this).get(MainViewModel.class);
+        viewModel.itemLiveData.observe(this, stores -> {
+            adapter.updateItems(stores);
+            getSupportActionBar().setTitle("마스크 재고 있는 곳: "+stores.size()+ "곳 ");
+
+        });
     }
 
     @Override
