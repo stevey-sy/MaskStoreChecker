@@ -61,6 +61,7 @@ public class MainViewModel extends ViewModel {
                     double distance = LocationDistance.distance(location.getLatitude(), location.getLongitude(), store.getLat(), store.getLng(), "k");
                     store.setDistance(distance);
                 }
+                Collections.sort(items);
 
                 itemLiveData.postValue(items);
             }
