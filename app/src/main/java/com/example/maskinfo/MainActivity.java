@@ -54,6 +54,8 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        // view model 객체 생성
+        viewModel = new ViewModelProvider(this).get(MainViewModel.class);
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
 
@@ -161,6 +163,18 @@ public class MainActivity extends AppCompatActivity {
                     // Got last known location. In some rare situations this can be null.
                     if (location != null) {
                         // Logic to handle location object
+
+//                        location.setLatitude(37.641420769234);
+//                        location.setLongitude(127.03856546312);
+
+                        Log.d(TAG, "performAction: "+ location);
+                        Log.d(TAG, "performAction: "+ location.getLatitude());
+                        Log.d(TAG, "performAction: "+ location.getLongitude());
+
+                        // 받아온 Location 데이터를 view model로 넘겨주는 부분
+                       viewModel.location = location;
+                       //
+                       viewModel.fetchStoreInfo();
                     }
                 });
 
@@ -219,7 +233,7 @@ class StoreAdapter extends RecyclerView.Adapter<StoreAdapter.StoreViewHolder> {
 
         holder.nameTextView.setText(store.getName());
         holder.addressTextView.setText(store.getAddr());
-        holder.distanceTextView.setText("1.0 Km");
+        holder.distanceTextView.setText(String.format("%.2fkm", store.getDistance()));
 
         int color = Color.GREEN;
         String count = "100개 이상";
